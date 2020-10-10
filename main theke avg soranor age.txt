@@ -1,0 +1,320 @@
+import java.io.*;
+import java.util.*;
+
+
+class Student{
+    int id;
+    Integer[] courseList;
+    Student(int i,Integer[] c){
+        id=i;
+        courseList=c;
+    }
+}
+
+class NodeChecking{
+    int one,two;
+    NodeChecking(int one,int two){
+        this.one=one;
+        this.two=two;
+    }
+    boolean match(NodeChecking n){
+        if(this.one==n.one){
+            if(this.two==n.two){
+                return true;
+            }
+        }
+        if(this.one==n.two){
+            if(this.two==n.one){
+                return true;
+            }
+        }
+        return false;
+    }
+}
+
+class Heruistic{
+
+    int total_Number_Of_Courses;
+    boolean[][] edge_bet_nodes;
+    int[] slot_for_course;
+    int[] degree_Of_node;
+    LinkedList[] which_edge_are_connected_to_this_node;
+    LinkedList<Integer> chain_for_kempe;
+    LinkedList<NodeChecking> KempedNodeList;
+    boolean[] nth_course_is_free;
+
+    Heruistic(int c){
+        total_Number_Of_Courses=c;
+        slot_for_course=new int[total_Number_Of_Courses];
+        degree_Of_node=new int[total_Number_Of_Courses];
+        which_edge_are_connected_to_this_node=new LinkedList[total_Number_Of_Courses];
+        chain_for_kempe=new LinkedList<>();
+        KempedNodeList=new LinkedList<>();
+        edge_bet_nodes=new boolean[total_Number_Of_Courses][total_Number_Of_Courses];
+        for(int i=0;i<total_Number_Of_Courses;i++){
+            for(int j=0;j<total_Number_Of_Courses;j++){
+                edge_bet_nodes[i][j]=false;
+            }
+        }
+        for(int i=0;i<total_Number_Of_Courses;i++){
+            which_edge_are_connected_to_this_node[i]=new LinkedList<Integer>();
+        }
+        for(int i=0;i<total_Number_Of_Courses;i++){
+            degree_Of_node[i]=0;
+        }
+        for(int i=0;i<total_Number_Of_Courses;i++){
+            slot_for_course[i]=-1;
+        }
+    }
+
+
+    void addEdgeTrue(int c1,int c2){
+        edge_bet_nodes[c1][c2]=true;
+        edge_bet_nodes[c2][c1]=true;
+    }
+
+    void degreeIncrease(int c1,int c2){
+        if(!which_edge_are_connected_to_this_node[c1].contains(c2)){
+            degree_Of_node[c1]++;
+            degree_Of_node[c2]++;
+        }
+    }
+
+    void addEdge(int c1,int c2){
+        if(!which_edge_are_connected_to_this_node[c1].contains(c2)){
+            which_edge_are_connected_to_this_node[c1].add(c2);
+            which_edge_are_connected_to_this_node[c2].add(c1);
+        }
+    }
+
+   
+    void DSaturAlgo(){
+        int p=0;
+        while(p!=total_Number_Of_Courses){
+            p++;
+            int maximum_degree_of_node=-5;
+            int M_Degree=-5;
+            LinkedList<Integer> NodeList=new LinkedList<>();
+            for(int i=0;i<total_Number_Of_Courses;i++){
+                Set<Integer> s=new HashSet<Integer>();
+                if(slot_for_course[i]==-1){
+                    int tot_Node=which_edge_are_connected_to_this_node[i].size();
+                    for(int j=0;j<tot_Node;j++){
+                        int which_node=(int)which_edge_are_connected_to_this_node[i].get(j);
+                        if(slot_for_course[which_node]!=-1){
+                            s.add(slot_for_course[which_node]);
+                        }
+                    }
+                }
+                if(s.size()>maximum_degree_of_node){
+                    maximum_degree_of_node=s.size();
+                    NodeList.clear();
+                    NodeList.add(i);
+                }
+                else if(s.size()==maximum_degree_of_node){
+                    NodeList.add(i);
+                }
+            }
+            int VNode=0;
+            for(int n:NodeList){
+                if(this.degree_Of_node[n]>M_Degree){
+                    M_Degree=this.degree_Of_node[n];
+                    VNode=n;
+                }
+            }
+
+
+            nth_course_is_free=new boolean[total_Number_Of_Courses];
+            Arrays.fill(nth_course_is_free,true);
+            Iterator<Integer> it=which_edge_are_connected_to_this_node[VNode].iterator();
+            while (it.hasNext()){
+                int next_node=it.next();
+                if(slot_for_course[next_node]!=-1){
+                    nth_course_is_free[slot_for_course[next_node]]=false;
+                }
+            }
+            for(int i=0;i<total_Number_Of_Courses;i++){
+                if(nth_course_is_free[i]){
+                    slot_for_course[VNode]=i;
+                    break;
+                }
+            }
+        }
+    }
+
+
+    void Start_Chain_Here(int actual_course,int slot2color){
+        chain_for_kempe.add(actual_course);
+        int total_neighbour=which_edge_are_connected_to_this_node[actual_course].size();
+        for(int i=0;i<total_neighbour;i++){
+            int pick_a_neighbour=(int)which_edge_are_connected_to_this_node[actual_course].get(i);
+            if(!chain_for_kempe.contains(pick_a_neighbour) && slot_for_course[pick_a_neighbour]==slot2color){
+                Start_Chain_Here(pick_a_neighbour,slot_for_course[actual_course]);
+            }
+        }
+    }
+
+
+    void KempeChaingAlgorithm(){
+        Random r=new Random();
+        chain_for_kempe.clear();
+        int pick_a_random_course=r.nextInt(this.total_Number_Of_Courses);
+        int pick_a_random_neighbour=-5;
+        while(true){
+            int neighbour_num=r.nextInt(which_edge_are_connected_to_this_node[pick_a_random_course].size());
+            pick_a_random_neighbour=(int)which_edge_are_connected_to_this_node[pick_a_random_course].get(neighbour_num);
+            NodeChecking first_chain=new NodeChecking(pick_a_random_course,pick_a_random_neighbour);
+            if(KempedNodeList.size()==0){
+                KempedNodeList.add(first_chain);
+                break;
+            }
+            boolean checker=false;
+            for(int i=0;i<KempedNodeList.size();i++){
+                if(first_chain.match(KempedNodeList.get(i))){
+                    checker=true;
+                    break;
+                }
+            }
+            if(checker==false){
+                KempedNodeList.add(first_chain);
+                break;
+            }
+        }
+        int slot1=slot_for_course[pick_a_random_course];
+        int slot2=slot_for_course[pick_a_random_neighbour];
+        Start_Chain_Here(pick_a_random_course,slot2);
+        for(int n:chain_for_kempe){
+            if(slot_for_course[n]==slot1){
+                slot_for_course[n]=slot2;
+            }
+            else {
+                slot_for_course[n]=slot1;
+            }
+        }
+    }
+
+}
+
+public class Main {
+    public static  double avg_penalty_count(int[] slots,LinkedList<Student> s){
+        int totalPenalty=0;
+        for(Student std:s){
+            int penalty=0;
+            int totalStudensts=std.courseList.length;
+            for(int i=0;i<totalStudensts-1;i++){
+                for(int j=i+1;j<totalStudensts;j++){
+                    if(slots[std.courseList[i]]>slots[std.courseList[j]]){
+                        int temp=std.courseList[i];
+                        std.courseList[i]=std.courseList[j];
+                        std.courseList[j]=temp;
+                    }
+                }
+            }
+            for(int i=0;i<totalStudensts-1;i++){
+                int diff=slots[std.courseList[i+1]]-slots[std.courseList[i]];
+                if(diff>5){
+
+                }
+                else{
+                    penalty=penalty+(int)Math.pow(2,5-diff);
+                }
+            }
+            totalPenalty=totalPenalty+penalty;
+        }
+        //  System.out.println(totalPenalty);
+        double avgPenalty=(double) totalPenalty/(double)s.size();
+        //   System.out.println(avgPenalty);
+        return avgPenalty;
+    }
+    public static void main(String[] args) {
+
+        int totalCourses;
+        LinkedList<Student> std = new LinkedList<Student>();
+        totalCourses = 0;
+        File File_For_Students;
+        File File_For_Courses;
+        File_For_Students = new File("yor-f-83.stu");
+        File_For_Courses = new File("yor-f-83.crs");
+        try {
+            BufferedReader br = new BufferedReader(new FileReader(File_For_Courses));
+            while (br.readLine() != null) {
+                totalCourses++;
+            }
+            br.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        Heruistic h=new Heruistic(totalCourses);
+
+
+        try{
+            int std_id=1;
+            String inputLine="";
+            BufferedReader br = new BufferedReader(new FileReader(File_For_Students));
+            while ((inputLine=br.readLine())!=null){
+                LinkedList<Integer> edge=new LinkedList<Integer>();
+                Scanner s=new Scanner(inputLine);
+                while (s.hasNext()){
+                    edge.add(s.nextInt()-1);
+                }
+                int num_of_course_a_std=edge.size();
+                Integer student_course_array[]=new Integer[num_of_course_a_std];
+                Student so;
+                so=new Student(std_id,edge.toArray(student_course_array));
+                std_id++;
+                std.add(so);
+                for(int i=0;i<num_of_course_a_std-1;i++){
+                    for(int j=i+1;j<num_of_course_a_std;j++){
+                        h.addEdgeTrue(edge.get(i),edge.get(j));
+                    }
+                }
+                for(int i=0;i<num_of_course_a_std-1;i++){
+                    for(int j=i+1;j<num_of_course_a_std;j++){
+                        h.degreeIncrease(edge.get(i),edge.get(j));
+                    }
+                }
+                for(int i=0;i<num_of_course_a_std-1;i++){
+                    for(int j=i+1;j<num_of_course_a_std;j++){
+                        h.addEdge(edge.get(i),edge.get(j));
+                    }
+                }
+
+            }
+        }
+        catch (Exception e){
+            e.printStackTrace();
+        }
+        double minimumAveragePenalty=Integer.MAX_VALUE;
+        int min_average_penalty_slots[]=new int[totalCourses];
+        h.DSaturAlgo();
+
+        for(int i=0;i<20;i++){
+            double avgPenalty;
+            h.KempeChaingAlgorithm();
+            avgPenalty=avg_penalty_count(h.slot_for_course,std);
+            if(avgPenalty<minimumAveragePenalty){
+                minimumAveragePenalty=avgPenalty;
+                for(int j=0;j<totalCourses;j++){
+                    min_average_penalty_slots[j]=h.slot_for_course[j];   // ekhane Sorasori save rakleo hbe
+                }
+            }
+        }
+        
+        int maxi=-5;
+        for(int i=0;i<totalCourses;i++){
+            if(min_average_penalty_slots[i]>maxi){
+                maxi=min_average_penalty_slots[i];
+            }
+        }
+        maxi++;
+        System.out.println("Total Slots : "+maxi);
+        System.out.println("Average Penalty is : "+minimumAveragePenalty);
+        System.out.println("Minimum Penalty Course Distribution");
+        for(int i=0;i<totalCourses;i++){
+            System.out.println("Course "+(i + 1)+" -> Slot "+(min_average_penalty_slots[i]+1));
+        }
+        
+    }
+}
+
+
